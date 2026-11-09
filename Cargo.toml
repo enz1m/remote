@@ -1,0 +1,121 @@
+[package]
+name = "remote-app"
+version = "0.1.0"
+authors = ["enzUI contributors"]
+edition = "2024"
+publish = false
+license = "AGPL-3.0-or-later"
+description = "Native remote desktops with SSH tunneling, built with enzUI"
+repository = "https://github.com/enz1m/remote"
+# Separate app workspaces must declare the framework toolchain floor themselves.
+rust-version = "1.95"
+
+[workspace]
+resolver = "3"
+
+[features]
+x11 = ["iced/x11", "enzui-iced-widgets/x11"]
+# The enzui-center app connector. Off by default; with it on, the app
+# still connects only when a credential has been enrolled for its app id.
+center = ["dep:enzui-iced-agent"]
+
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.test]
+debug = "line-tables-only"
+
+[profile.release]
+lto = false
+codegen-units = 16
+debug = 0
+strip = "debuginfo"
+
+[profile.dev.package."*"]
+opt-level = 2
+debug = 0
+incremental = false
+
+[profile.test.package."*"]
+opt-level = 2
+debug = 0
+incremental = false
+
+[dependencies]
+libc = "0.2"
+tempfile = "3"
+# Portal D-Bus dependencies use Tokio, so the GUI executor must supply its reactor.
+iced = { git = "https://github.com/enz1m/enzim-iced.git", rev = "67f991b7442cbd79821141069c3b864cc12413f2", default-features = false, features = ["wgpu", "tiny-skia", "crisp", "web-colors", "thread-pool", "linux-theme-detection", "wayland", "canvas", "svg", "a11y", "tokio"] }
+iced_renderer = { git = "https://github.com/enz1m/enzim-iced.git", rev = "67f991b7442cbd79821141069c3b864cc12413f2", default-features = false }
+enzui-iced-core = { package = "enzui-core", features = ["accesskit"], git = "https://github.com/enz1m/enzui.git", tag = "v0.1.0-alpha.1" }
+# Credentials connect asynchronously after boot through the services crate.
+enzui-wayland = { git = "https://github.com/enz1m/enzui.git", tag = "v0.1.0-alpha.1" }
+enzui-parent-lease = { git = "https://github.com/enz1m/enzui.git", tag = "v0.1.0-alpha.1" }
+enzui-services = { features = ["secret-service"], git = "https://github.com/enz1m/enzui.git", tag = "v0.1.0-alpha.1" }
+enzui-iced-theme = { package = "enzui-theme", git = "https://github.com/enz1m/enzui.git", tag = "v0.1.0-alpha.1" }
+enzui-iced-widgets = { package = "enzui-widgets", features = ["portal-dbus", "application-dbus"], git = "https://github.com/enz1m/enzui.git", tag = "v0.1.0-alpha.1" }
+
+# Domain dependencies
+spice-client-glib = "=0.8.0"
+sdl2 = "0.38"
+flate2 = "1"
+zstd = { version = "0.13", default-features = false }
+gstreamer = { version = "0.25", features = ["v1_20"] }
+gstreamer-app = { version = "0.25", features = ["v1_20"] }
+moonlight-common = { git = "https://github.com/enz1m/enzim-moonlight-common-rust.git", rev = "b3f431820d4812853a4f29f861585f63ee0f7751", default-features = false, features = ["std", "openssl", "stream-c"] }
+prost = "0.14"
+sodiumoxide = "0.2"
+sha2 = "0.10"
+base64 = "0.22"
+openssl = "0.10"
+pem = "3"
+form_urlencoded = "1"
+httparse = "1"
+url = "2"
+ironrdp-cliprdr = { version = "=0.9.0" }
+ironrdp-connector = { version = "=0.12.0" }
+ironrdp-core = { version = "=0.3.1", features = ["alloc"] }
+ironrdp-displaycontrol = { version = "=0.10.0" }
+ironrdp-dvc = { version = "=0.10.0" }
+ironrdp-graphics = { version = "=0.11.0" }
+ironrdp-pdu = { version = "=0.11.0", features = ["std"] }
+ironrdp-rdpsnd = { version = "=0.11.0" }
+ironrdp-session = { version = "=0.13.0" }
+ironrdp-svc = { version = "=0.10.0" }
+ironrdp-blocking = "=0.12.0"
+rustls = { version = "0.23", default-features = false, features = ["std", "ring", "tls12"] }
+rustls-native-certs = "0.8"
+x509-cert = "0.2"
+anyhow = "1"
+des = { version = "0.8", features = ["zeroize"] }
+zeroize = "1"
+xkeysym = "0.2"
+rusqlite = { version = "0.31", features = ["bundled"] }
+enzui-iced-agent = { package = "enzui-agent", features = ["iced-consumer"], optional = true, git = "https://github.com/enz1m/enzui.git", tag = "v0.1.0-alpha.1" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+directories = "5"
+# Keep zbus on iced's Tokio reactor; enabling async-io too makes blocking
+# stream cleanup spawn on the wrong runtime.
+zbus = { version = "5", default-features = false, features = ["tokio", "blocking-api"] }
+
+[dev-dependencies]
+# Fake helper scripts a parallel suite can run (no "Text file busy").
+enzui-iced-test-support = { package = "enzui-test-support", git = "https://github.com/enz1m/enzui.git", tag = "v0.1.0-alpha.1" }
+enzui-iced-core = { package = "enzui-core", features = ["test-frame"], git = "https://github.com/enz1m/enzui.git", tag = "v0.1.0-alpha.1" }
+# Render tests use the application's pinned iced graph.
+iced_test = { git = "https://github.com/enz1m/enzim-iced.git", rev = "67f991b7442cbd79821141069c3b864cc12413f2" }
+
+[patch.crates-io]
+zbus_macros = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "815a9ca7b64aa24e14ccb6ea3f7eda97ef7bbc8a" }
+zbus_names = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "815a9ca7b64aa24e14ccb6ea3f7eda97ef7bbc8a" }
+zvariant = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "815a9ca7b64aa24e14ccb6ea3f7eda97ef7bbc8a" }
+zvariant_derive = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "815a9ca7b64aa24e14ccb6ea3f7eda97ef7bbc8a" }
+zvariant_utils = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "815a9ca7b64aa24e14ccb6ea3f7eda97ef7bbc8a" }
+zbus = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "815a9ca7b64aa24e14ccb6ea3f7eda97ef7bbc8a" }
+winit = { git = "https://github.com/enz1m/enzim-winit.git", rev = "f6ce16941bf815a438db7e628ab1126ce48e31dd" }
+
+[lints.rust]
+unsafe_code = "deny"

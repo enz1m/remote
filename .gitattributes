@@ -1,0 +1,2 @@
+# Preserve the imported SPICE archive's upstream formatting.
+vendor/spice-gtk/** -whitespace

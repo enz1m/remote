@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=Remote
+GenericName=Remote
+Comment=Connect to remote desktops
+Exec=remote-app %U
+TryExec=remote-app
+Icon=io.github.enzui.Remote
+Terminal=false
+StartupNotify=true
+StartupWMClass=io.github.enzui.Remote
+Categories=Network;RemoteAccess;
+Keywords=remote;desktop;connection;vnc;viewer;
+MimeType=application/x-rdp;application/x-remmina;application/x-enzui-remote-profiles+json;

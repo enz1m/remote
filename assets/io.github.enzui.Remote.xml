@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-rdp">
+    <comment>Remote Desktop connection</comment>
+    <glob pattern="*.rdp"/>
+  </mime-type>
+  <mime-type type="application/x-remmina">
+    <comment>Remmina connection profile</comment>
+    <glob pattern="*.remmina"/>
+  </mime-type>
+  <mime-type type="application/x-enzui-remote-profiles+json">
+    <comment>Remote connection profiles</comment>
+    <sub-class-of type="application/json"/>
+    <glob pattern="*.remote.json" weight="60"/>
+    <glob pattern="remote-app-profiles.json" weight="60"/>
+  </mime-type>
+</mime-info>
