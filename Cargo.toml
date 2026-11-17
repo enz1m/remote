@@ -45,15 +45,15 @@ incremental = false
 libc = "0.2"
 tempfile = "3"
 # Portal D-Bus dependencies use Tokio, so the GUI executor must supply its reactor.
-iced = { git = "https://github.com/enz1m/enzim-iced.git", rev = "de6159248c487dddaeec639fe4ec0e7c41c1de2b", default-features = false, features = ["wgpu", "tiny-skia", "crisp", "web-colors", "thread-pool", "linux-theme-detection", "wayland", "canvas", "svg", "a11y", "tokio"] }
-iced_renderer = { git = "https://github.com/enz1m/enzim-iced.git", rev = "de6159248c487dddaeec639fe4ec0e7c41c1de2b", default-features = false }
-enzui-iced-core = { package = "enzui-core", features = ["accesskit"], git = "https://github.com/enz1m/enzui.git", rev = "a8310925b96e8ef28deafc7234371e31225d2d4e" }
+iced = { git = "https://github.com/enz1m/enzim-iced.git", rev = "a6483d7eb2f98bd568dfd4a6d5ab0228ace287d6", default-features = false, features = ["wgpu", "tiny-skia", "crisp", "web-colors", "thread-pool", "linux-theme-detection", "wayland", "wayland-dlopen", "wayland-decorations", "canvas", "svg", "a11y", "tokio"] }
+iced_renderer = { git = "https://github.com/enz1m/enzim-iced.git", rev = "a6483d7eb2f98bd568dfd4a6d5ab0228ace287d6", default-features = false }
+enzui-iced-core = { package = "enzui-core", features = ["accesskit"], git = "https://github.com/enz1m/enzui.git", tag = "v0.2.0-alpha.1" }
 # Credentials connect asynchronously after boot through the services crate.
-enzui-wayland = { git = "https://github.com/enz1m/enzui.git", rev = "a8310925b96e8ef28deafc7234371e31225d2d4e" }
-enzui-parent-lease = { git = "https://github.com/enz1m/enzui.git", rev = "a8310925b96e8ef28deafc7234371e31225d2d4e" }
-enzui-services = { features = ["secret-service"], git = "https://github.com/enz1m/enzui.git", rev = "a8310925b96e8ef28deafc7234371e31225d2d4e" }
-enzui-iced-theme = { package = "enzui-theme", git = "https://github.com/enz1m/enzui.git", rev = "a8310925b96e8ef28deafc7234371e31225d2d4e" }
-enzui-iced-widgets = { package = "enzui-widgets", features = ["portal-dbus", "application-dbus"], git = "https://github.com/enz1m/enzui.git", rev = "a8310925b96e8ef28deafc7234371e31225d2d4e" }
+enzui-wayland = { git = "https://github.com/enz1m/enzui.git", tag = "v0.2.0-alpha.1" }
+enzui-parent-lease = { git = "https://github.com/enz1m/enzui.git", tag = "v0.2.0-alpha.1" }
+enzui-services = { features = ["secret-service"], git = "https://github.com/enz1m/enzui.git", tag = "v0.2.0-alpha.1" }
+enzui-iced-theme = { package = "enzui-theme", git = "https://github.com/enz1m/enzui.git", tag = "v0.2.0-alpha.1" }
+enzui-iced-widgets = { package = "enzui-widgets", features = ["portal-dbus", "application-dbus"], git = "https://github.com/enz1m/enzui.git", tag = "v0.2.0-alpha.1" }
 
 # Domain dependencies
 spice-client-glib = "=0.8.0"
@@ -91,7 +91,7 @@ des = { version = "0.8", features = ["zeroize"] }
 zeroize = "1"
 xkeysym = "0.2"
 rusqlite = { version = "0.31", features = ["bundled"] }
-enzui-iced-agent = { package = "enzui-agent", features = ["iced-consumer"], optional = true, git = "https://github.com/enz1m/enzui.git", rev = "a8310925b96e8ef28deafc7234371e31225d2d4e" }
+enzui-iced-agent = { package = "enzui-agent", features = ["iced-consumer"], optional = true, git = "https://github.com/enz1m/enzui.git", tag = "v0.2.0-alpha.1" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
@@ -103,19 +103,19 @@ zbus = { version = "5", default-features = false, features = ["tokio", "blocking
 
 [dev-dependencies]
 # Fake helper scripts a parallel suite can run (no "Text file busy").
-enzui-iced-test-support = { package = "enzui-test-support", git = "https://github.com/enz1m/enzui.git", rev = "a8310925b96e8ef28deafc7234371e31225d2d4e" }
-enzui-iced-core = { package = "enzui-core", features = ["test-frame"], git = "https://github.com/enz1m/enzui.git", rev = "a8310925b96e8ef28deafc7234371e31225d2d4e" }
+enzui-iced-test-support = { package = "enzui-test-support", git = "https://github.com/enz1m/enzui.git", tag = "v0.2.0-alpha.1" }
+enzui-iced-core = { package = "enzui-core", features = ["test-frame"], git = "https://github.com/enz1m/enzui.git", tag = "v0.2.0-alpha.1" }
 # Render tests use the application's pinned iced graph.
-iced_test = { git = "https://github.com/enz1m/enzim-iced.git", rev = "de6159248c487dddaeec639fe4ec0e7c41c1de2b" }
+iced_test = { git = "https://github.com/enz1m/enzim-iced.git", rev = "a6483d7eb2f98bd568dfd4a6d5ab0228ace287d6" }
 
 [patch.crates-io]
-zbus_macros = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "815a9ca7b64aa24e14ccb6ea3f7eda97ef7bbc8a" }
-zbus_names = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "815a9ca7b64aa24e14ccb6ea3f7eda97ef7bbc8a" }
-zvariant = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "815a9ca7b64aa24e14ccb6ea3f7eda97ef7bbc8a" }
-zvariant_derive = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "815a9ca7b64aa24e14ccb6ea3f7eda97ef7bbc8a" }
-zvariant_utils = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "815a9ca7b64aa24e14ccb6ea3f7eda97ef7bbc8a" }
-zbus = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "815a9ca7b64aa24e14ccb6ea3f7eda97ef7bbc8a" }
-winit = { git = "https://github.com/enz1m/enzim-winit.git", rev = "f6ce16941bf815a438db7e628ab1126ce48e31dd" }
+zbus_macros = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "e182645b56d15e637bb6c8144f99ebfa7f900716" }
+zbus_names = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "e182645b56d15e637bb6c8144f99ebfa7f900716" }
+zvariant = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "e182645b56d15e637bb6c8144f99ebfa7f900716" }
+zvariant_derive = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "e182645b56d15e637bb6c8144f99ebfa7f900716" }
+zvariant_utils = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "e182645b56d15e637bb6c8144f99ebfa7f900716" }
+zbus = { git = "https://github.com/enz1m/enzim-zbus.git", rev = "e182645b56d15e637bb6c8144f99ebfa7f900716" }
+winit = { git = "https://github.com/enz1m/enzim-winit.git", rev = "40eeb41f8637ef1620afa377ba006874224b6d65" }
 
 [lints.rust]
 unsafe_code = "deny"
