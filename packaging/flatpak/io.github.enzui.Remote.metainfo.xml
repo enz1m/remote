@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<component type="desktop-application">
+  <id>io.github.enzui.Remote</id>
+  <name>Remote</name>
+  <summary>Connect to remote desktops</summary>
+  <metadata_license>MIT</metadata_license>
+  <project_license>AGPL-3.0-or-later</project_license>
+  <developer id="io.github.enz1m">
+    <name>enzUI contributors</name>
+  </developer>
+  <launchable type="desktop-id">io.github.enzui.Remote.desktop</launchable>
+  <content_rating type="oars-1.1" />
+  <description>
+    <p>Connect using VNC, RDP, SPICE, RustDesk, or Moonlight. Organize saved connections in folders, import profiles, and use SSH tunnels for compatible protocols.</p>
+  </description>
+  <url type="homepage">https://github.com/enz1m/remote</url>
+  <url type="bugtracker">https://github.com/enz1m/remote/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/enz1m/remote/49a3cba242fdb4d42ed721bdf7f61371b20aeea3/docs/screenshots/lavender.png</image>
+    </screenshot>
+  </screenshots>
+  <releases>
+    <release version="0.1.1" date="2026-11-20">
+      <description>
+        <p>Add Flatpak packaging for enzim Apps.</p>
+      </description>
+    </release>
+  </releases>
+</component>

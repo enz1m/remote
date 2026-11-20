@@ -1,0 +1,151 @@
+{
+  "app-id": "io.github.enzui.Remote",
+  "branch": "stable",
+  "runtime": "org.freedesktop.Platform",
+  "runtime-version": "26.08",
+  "sdk": "org.freedesktop.Sdk",
+  "sdk-extensions": [
+    "org.freedesktop.Sdk.Extension.rust-stable",
+    "org.freedesktop.Sdk.Extension.llvm22"
+  ],
+  "command": "remote-app",
+  "finish-args": [
+    "--socket=wayland",
+    "--device=dri",
+    "--share=network",
+    "--socket=pulseaudio",
+    "--talk-name=org.freedesktop.secrets",
+    "--socket=ssh-auth"
+  ],
+  "build-options": {
+    "append-path": "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm22/bin",
+    "env": {
+      "SODIUM_USE_PKG_CONFIG": "1",
+      "LIBCLANG_PATH": "/usr/lib/sdk/llvm22/lib"
+    }
+  },
+  "modules": [
+    {
+      "name": "spice-protocol",
+      "buildsystem": "meson",
+      "license-files": [
+        "COPYING"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://www.spice-space.org/download/releases/spice-protocol-0.14.5.tar.xz",
+          "sha256": "baf58449f6e89d19f475899ad5fb9196fdc46c03cc53233f4e39cf2978f9cff7"
+        }
+      ]
+    },
+    {
+      "name": "spice-build-pyparsing",
+      "buildsystem": "simple",
+      "sources": [
+        {
+          "type": "file",
+          "url": "https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl",
+          "sha256": "a749938e02d6fd0b59b356ca504a24982314bb090c383e3cf201c95ef7e2bfcf"
+        }
+      ],
+      "build-commands": [
+        "python3 -m zipfile -e pyparsing-3.2.3-py3-none-any.whl /app/lib/spice-build"
+      ],
+      "cleanup": [
+        "/lib/spice-build"
+      ]
+    },
+    {
+      "name": "spice-gtk",
+      "buildsystem": "meson",
+      "license-files": [
+        "COPYING"
+      ],
+      "build-options": {
+        "env": {
+          "PYTHONPATH": "/app/lib/spice-build"
+        }
+      },
+      "config-opts": [
+        "-Dgtk=disabled",
+        "-Dgtk_doc=disabled",
+        "-Dpolkit=disabled",
+        "-Dusbredir=disabled",
+        "-Dvapi=disabled",
+        "-Dwebdav=disabled",
+        "-Dsmartcard=disabled",
+        "-Dintrospection=disabled",
+        "-Dsasl=disabled",
+        "-Dlibcap-ng=disabled",
+        "-Dwayland-protocols=disabled"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://src.fedoraproject.org/repo/pkgs/spice-gtk/spice-gtk-0.43.tar.xz/sha512/b9e19a1f38b1ff6fb80d04fb9b7a5c0c97b3de6e7bc7dd8781701bb7a9b07de3d3e97558e2b408521c39a14ad647ceb44a1b493235ec8aec063f3669dd4ebed4/spice-gtk-0.43.tar.xz",
+          "sha256": "cee26e5b2d22909f35b40a94398d1e863ca3962ee46494ca97aab206abc3203b"
+        }
+      ]
+    },
+    {
+      "name": "libsodium",
+      "buildsystem": "autotools",
+      "license-files": [
+        "LICENSE"
+      ],
+      "config-opts": [
+        "--disable-static"
+      ],
+      "sources": [
+        {
+          "type": "archive",
+          "url": "https://download.libsodium.org/libsodium/releases/libsodium-1.0.22.tar.gz",
+          "sha256": "adbdd8f16149e81ac6078a03aca6fc03b592b89ef7b5ed83841c086191be3349"
+        }
+      ]
+    },
+    {
+      "name": "remote",
+      "buildsystem": "simple",
+      "build-commands": [
+        "cargo build --locked --offline --release --jobs \"${FLATPAK_BUILDER_N_JOBS:-2}\" --bin remote-app",
+        "install -Dm755 target/release/remote-app /app/bin/remote-app",
+        "install -Dm644 assets/io.github.enzui.Remote.desktop /app/share/applications/io.github.enzui.Remote.desktop",
+        "install -Dm644 packaging/flatpak/io.github.enzui.Remote.metainfo.xml /app/share/metainfo/io.github.enzui.Remote.metainfo.xml",
+        "install -Dm644 assets/io.github.enzui.Remote.svg /app/share/icons/hicolor/scalable/apps/io.github.enzui.Remote.svg",
+        "install -Dm644 LICENSE /app/share/licenses/io.github.enzui.Remote/LICENSE",
+        "install -Dm644 assets/io.github.enzui.Remote.xml /app/share/mime/packages/io.github.enzui.Remote.xml",
+        "install -Dm644 LICENSES/Remote-original-MIT.txt /app/share/licenses/io.github.enzui.Remote/Remote-original-MIT.txt",
+        "install -Dm644 LICENSES/enzUI-icons-MIT.txt /app/share/licenses/io.github.enzui.Remote/enzUI-icons-MIT.txt"
+      ],
+      "sources": [
+        {
+          "type": "git",
+          "url": "https://github.com/enz1m/remote.git",
+          "commit": "@ENZIM_SOURCE_COMMIT@",
+          "disable-submodules": true
+        },
+        {
+          "type": "archive",
+          "url": "https://github.com/enz1m/remote/releases/download/v0.1.1/remote-cargo-vendor-0.1.1.tar.xz",
+          "sha256": "9b88620d230cd1c950ad6279dac9dcac60a53061c0dea7b1f1a3a9f103856550",
+          "strip-components": 1
+        },
+        {
+          "type": "file",
+          "url": "https://raw.githubusercontent.com/enz1m/enzim-winit/40eeb41f8637ef1620afa377ba006874224b6d65/wayland-protocols/xdg-session-management-v1.xml",
+          "sha256": "3674591ca8e68f76297c535e8edd6783d84b59086c38ebe08ff5ff1f2dec5bae",
+          "dest": "vendor/winit-0.30.13/wayland-protocols"
+        }
+      ]
+    }
+  ],
+  "cleanup": [
+    "/include",
+    "/lib/pkgconfig",
+    "/lib/cmake",
+    "*.la",
+    "*.a"
+  ]
+}
