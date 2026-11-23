@@ -128,8 +128,8 @@
         },
         {
           "type": "archive",
-          "url": "https://github.com/enz1m/remote/releases/download/v0.1.1/remote-cargo-vendor-0.1.1.tar.xz",
-          "sha256": "2d98ba33aad9ab0f44e33176c6891ac64b2bccb376684dc816bc8b332f48a33b",
+          "url": "https://github.com/enz1m/remote/releases/download/v0.1.2/remote-cargo-vendor-0.1.2.tar.xz",
+          "sha256": "3864ddb025cb84e8cc62dc1d9e528c9d9f0f7b403f27294cbe9e3216c2eb6bb5",
           "strip-components": 1
         },
         {

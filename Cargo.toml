@@ -1,6 +1,6 @@
 [package]
 name = "remote-app"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["enzUI contributors"]
 edition = "2024"
 publish = false
