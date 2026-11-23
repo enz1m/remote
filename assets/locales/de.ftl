@@ -84,3 +84,6 @@ remote-days-ago = { $count ->
     [one] vor { $count } Tag
    *[other] vor { $count } Tagen
     }
+remote-vnc-sharing-username = Benutzername für die Freigabe
+remote-vnc-fingerprint = Zertifikat-Fingerabdruck
+remote-vnc-fingerprint-hint = Kopieren Sie den auf dem freigebenden Rechner angezeigten SHA-256-Fingerabdruck. Bleibt das Feld leer, werden die Zertifizierungsstellen des Systems und der Hostname geprüft.

@@ -32,5 +32,9 @@ mod wire_tests;
 mod transport_tests;
 
 #[cfg(test)]
+#[path = "rfb/vencrypt_tests.rs"]
+mod vencrypt_tests;
+
+#[cfg(test)]
 #[path = "rfb/frame_tests.rs"]
 mod frame_tests;

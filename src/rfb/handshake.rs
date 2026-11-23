@@ -27,6 +27,11 @@ use crate::protocol::ProtocolError;
 /// connect open indefinitely while never exceeding any single limit — the
 /// slow-drip shape a per-call timeout does not bound.
 pub const HANDSHAKE_DEADLINE: Duration = Duration::from_secs(10);
+const VENCRYPT: u8 = 19;
+const X509_NONE: u32 = 260;
+const X509_VNC: u32 = 261;
+const X509_PLAIN: u32 = 262;
+const MAX_CREDENTIAL_BYTES: usize = 4096;
 
 // ---------------------------------------------------------------------------
 // Failure
@@ -328,12 +333,120 @@ pub fn handshake_with_password(
     negotiate(&mut stream, destination, cancelled, password, None)
 }
 
+pub(super) struct VerifiedTls<'a> {
+    host: &'a str,
+    fingerprint: Option<policy::Fingerprint>,
+    username: &'a str,
+}
+
+impl<'a> VerifiedTls<'a> {
+    pub(super) fn for_profile(profile: &'a ConnectionProfile) -> Result<Option<Self>, RfbFailure> {
+        if !policy::requires_tls(profile) {
+            return Ok(None);
+        }
+        let fingerprint = profile
+            .extra
+            .get(policy::FINGERPRINT_KEY)
+            .map(|value| {
+                policy::parse_fingerprint(value).ok_or_else(|| {
+                    RfbFailure::Tls("The saved SHA-256 certificate fingerprint is invalid".into())
+                })
+            })
+            .transpose()?;
+        Ok(Some(Self {
+            host: &profile.host,
+            fingerprint,
+            username: &profile.username,
+        }))
+    }
+}
+
+fn negotiate_vencrypt(
+    io: &mut Deadlined<'_>,
+    tls: VerifiedTls<'_>,
+    password: Option<&str>,
+) -> Result<u32, RfbFailure> {
+    let mut version = [0; 2];
+    io.read_exact(&mut version, "reading VeNCrypt version")?;
+    if version != [0, 2] {
+        return Err(RfbFailure::Tls("The host must support VeNCrypt 0.2".into()));
+    }
+    io.write_all(&[0, 2], "selecting VeNCrypt version")?;
+    let mut accepted = [0];
+    io.read_exact(&mut accepted, "reading VeNCrypt version acceptance")?;
+    if accepted != [0] {
+        return Err(RfbFailure::Tls("The host refused VeNCrypt 0.2".into()));
+    }
+    let mut count = [0];
+    io.read_exact(&mut count, "reading VeNCrypt subtypes")?;
+    let mut supported = Vec::with_capacity(usize::from(count[0]));
+    for _ in 0..count[0] {
+        let mut subtype = [0; 4];
+        io.read_exact(&mut subtype, "reading VeNCrypt subtypes")?;
+        supported.push(u32::from_be_bytes(subtype));
+    }
+
+    let plain = password.filter(|password| !password.is_empty() && !tls.username.is_empty());
+    let selected = if plain.is_some() && supported.contains(&X509_PLAIN) {
+        X509_PLAIN
+    } else if password.is_some() && supported.contains(&X509_VNC) {
+        X509_VNC
+    } else if supported.contains(&X509_NONE) {
+        X509_NONE
+    } else if supported.contains(&X509_PLAIN) {
+        return Err(RfbFailure::Tls(
+            "The host requires a VNC sharing username and password. Enter them in the connection’s credentials.".into(),
+        ));
+    } else {
+        return Err(RfbFailure::Tls(
+            "The host must offer X509Plain, X509Vnc or X509None".into(),
+        ));
+    };
+
+    io.write_all(&selected.to_be_bytes(), "selecting verified VNC TLS")?;
+    io.read_exact(&mut accepted, "reading VeNCrypt subtype acceptance")?;
+    if accepted != [1] {
+        return Err(RfbFailure::Tls(
+            "The host refused the verified TLS subtype".into(),
+        ));
+    }
+    io.stream
+        .enable_tls(tls.host, tls.fingerprint, io.deadline)
+        .map_err(|error| RfbFailure::Tls(error.into()))?;
+    if let Some(password) = plain.filter(|_| selected == X509_PLAIN) {
+        write_plain_credentials(io, tls.username, password)?;
+    }
+    Ok(selected)
+}
+
+fn write_plain_credentials(
+    io: &mut Deadlined<'_>,
+    username: &str,
+    password: &str,
+) -> Result<(), RfbFailure> {
+    if [username, password]
+        .into_iter()
+        .any(|value| value.len() > MAX_CREDENTIAL_BYTES || value.as_bytes().contains(&0))
+    {
+        return Err(RfbFailure::Tls(
+            "The VNC sharing username and password must each fit within 4096 bytes and contain no NUL bytes".into(),
+        ));
+    }
+    let phase = "sending VNC sharing credentials";
+    let mut lengths = [0; 8];
+    lengths[..4].copy_from_slice(&(username.len() as u32).to_be_bytes());
+    lengths[4..].copy_from_slice(&(password.len() as u32).to_be_bytes());
+    io.write_all(&lengths, phase)?;
+    io.write_all(username.as_bytes(), phase)?;
+    io.write_all(password.as_bytes(), phase)
+}
+
 pub(super) fn negotiate(
     stream: &mut super::io::Stream,
     destination: Destination,
     cancelled: &AtomicBool,
     password: Option<&str>,
-    tls_host: Option<&str>,
+    tls: Option<VerifiedTls<'_>>,
 ) -> Result<Handshake, RfbFailure> {
     let mut io = Deadlined::new(stream, cancelled)?;
 
@@ -348,11 +461,11 @@ pub(super) fn negotiate(
     if !offered.is_empty() {
         io.read_exact(&mut offered, "reading the security types")?;
     }
-    let chosen = match if tls_host.is_some() {
-        if !offered.contains(&19) {
+    let chosen = match if tls.is_some() {
+        if !offered.contains(&VENCRYPT) {
             return Err(RfbFailure::Tls("The host does not offer required VeNCrypt security; plaintext downgrade was refused".into()));
         }
-        Ok(wire::SecurityType::Other(19))
+        Ok(wire::SecurityType::Other(VENCRYPT))
     } else if password.is_some() && offered.contains(&2) {
         Ok(wire::SecurityType::VncAuth)
     } else {
@@ -380,47 +493,10 @@ pub(super) fn negotiate(
     };
     io.write_all(&[chosen.number()], "choosing a security type")?;
 
-    let vnc_auth = if let Some(host) = tls_host {
-        let mut version = [0; 2];
-        io.read_exact(&mut version, "reading VeNCrypt version")?;
-        if version != [0, 2] {
-            return Err(RfbFailure::Tls("The host must support VeNCrypt 0.2".into()));
-        }
-        io.write_all(&[0, 2], "selecting VeNCrypt version")?;
-        let mut accepted = [0];
-        io.read_exact(&mut accepted, "reading VeNCrypt version acceptance")?;
-        if accepted != [0] {
-            return Err(RfbFailure::Tls("The host refused VeNCrypt 0.2".into()));
-        }
-        let mut count = [0];
-        io.read_exact(&mut count, "reading VeNCrypt subtypes")?;
-        let mut supported = Vec::with_capacity(usize::from(count[0]));
-        for _ in 0..count[0] {
-            let mut subtype = [0; 4];
-            io.read_exact(&mut subtype, "reading VeNCrypt subtypes")?;
-            supported.push(u32::from_be_bytes(subtype));
-        }
-        let selected = if password.is_some() && supported.contains(&261) {
-            261u32
-        } else if supported.contains(&260) {
-            260u32
-        } else {
-            return Err(RfbFailure::Tls("The host must offer X509Vnc or X509None; anonymous TLS and plaintext credentials are refused".into()));
-        };
-        io.write_all(&selected.to_be_bytes(), "selecting verified VNC TLS")?;
-        io.read_exact(&mut accepted, "reading VeNCrypt subtype acceptance")?;
-        if accepted != [1] {
-            return Err(RfbFailure::Tls(
-                "The host refused the verified TLS subtype".into(),
-            ));
-        }
-        io.stream
-            .enable_tls(host, io.deadline)
-            .map_err(RfbFailure::Tls)?;
-        selected == 261
-    } else {
-        chosen == wire::SecurityType::VncAuth
-    };
+    let subtype = tls
+        .map(|tls| negotiate_vencrypt(&mut io, tls, password))
+        .transpose()?;
+    let vnc_auth = subtype == Some(X509_VNC) || chosen == wire::SecurityType::VncAuth;
     if vnc_auth {
         use des::cipher::{BlockEncrypt, KeyInit};
         use zeroize::Zeroize;
@@ -446,7 +522,12 @@ pub(super) fn negotiate(
     let mut result = [0u8; 4];
     io.read_exact(&mut result, "reading the security result")?;
     if u32::from_be_bytes(result) != 0 {
-        let reason = io.read_reason("reading the security failure")?;
+        let reason = if subtype == Some(X509_PLAIN) {
+            // The host's refusal text can echo the credentials it just received.
+            "The host rejected the VNC sharing username or password".into()
+        } else {
+            io.read_reason("reading the security failure")?
+        };
         return Err(WireError::SecurityFailed { reason }.into());
     }
 

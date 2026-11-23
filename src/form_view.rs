@@ -447,10 +447,11 @@ pub(crate) fn connection_port_row<'a>(
 
 /// Credentials supported by the selected transport, with removal of legacy SSH secrets.
 fn credentials_group<'a>(enz: &EnzTheme, form: &'a ConnectionForm) -> Element<'a, Message> {
-    let username = compact_row(crate::l10n::text(if form.protocol == Protocol::RustDesk {
-        "remote-rustdesk-peer-id"
-    } else {
-        "remote-username"
+    let verified_vnc = form.protocol == Protocol::Vnc && form.vnc_tls;
+    let username = compact_row(crate::l10n::text(match form.protocol {
+        Protocol::RustDesk => "remote-rustdesk-peer-id",
+        Protocol::Vnc if verified_vnc => "remote-vnc-sharing-username",
+        _ => "remote-username",
     }))
     .entry(
         &form.username,
@@ -488,10 +489,9 @@ fn credentials_group<'a>(enz: &EnzTheme, form: &'a ConnectionForm) -> Element<'a
     )
     .into_element();
 
-    let mut rows = if matches!(
-        form.protocol,
-        Protocol::Vnc | Protocol::Spice | Protocol::Moonlight
-    ) {
+    let mut rows = if matches!(form.protocol, Protocol::Spice | Protocol::Moonlight)
+        || (form.protocol == Protocol::Vnc && !verified_vnc)
+    {
         vec![password]
     } else if form.protocol == crate::model::Protocol::Ssh {
         let mut rows = vec![
@@ -891,6 +891,20 @@ fn options_group<'a>(enz: &EnzTheme, form: &'a ConnectionForm) -> Element<'a, Me
         rows.push(compact_row("Require verified TLS (VeNCrypt)")
             .subtitle("Requires a trusted host certificate and VeNCrypt 0.2. Refuses plaintext downgrade.")
             .subtitle_wrap(true).switch(form.vnc_tls, Message::FormVncTlsChanged).into_element());
+        if form.vnc_tls || !form.vnc_fingerprint.is_empty() {
+            let mut fingerprint = compact_row(crate::l10n::text("remote-vnc-fingerprint"))
+                .subtitle(crate::l10n::text("remote-vnc-fingerprint-hint"))
+                .subtitle_wrap(true)
+                .entry(
+                    &form.vnc_fingerprint,
+                    "SHA-256",
+                    Message::FormVncFingerprintChanged,
+                );
+            if let Some(error) = form.vnc_fingerprint_error() {
+                fingerprint = fingerprint.error(error);
+            }
+            rows.push(fingerprint.into_element());
+        }
     }
     if form.plaintext_ack_offered() {
         rows.push(

@@ -19,12 +19,35 @@ use std::net::{IpAddr, SocketAddr};
 
 /// Require certificate-verified VeNCrypt without plaintext fallback.
 pub const TLS_KEY: &str = "remote.vnc.tls";
+pub const FINGERPRINT_KEY: &str = "remote.vnc.certificate-sha256";
+pub type Fingerprint = [u8; 32];
 
 pub fn requires_tls(profile: &crate::model::ConnectionProfile) -> bool {
     profile
         .extra
         .get(TLS_KEY)
         .is_some_and(|value| value == "true")
+        || profile.extra.contains_key(FINGERPRINT_KEY)
+}
+
+pub fn parse_fingerprint(text: &str) -> Option<Fingerprint> {
+    let bytes = text.trim().as_bytes();
+    let stride = match bytes.len() {
+        64 => 2,
+        95 => 3,
+        _ => return None,
+    };
+    let mut fingerprint = [0; 32];
+    for (index, byte) in fingerprint.iter_mut().enumerate() {
+        let offset = index * stride;
+        let hi = char::from(bytes[offset]).to_digit(16)?;
+        let lo = char::from(bytes[offset + 1]).to_digit(16)?;
+        if stride == 3 && index < 31 && bytes[offset + 2] != b':' {
+            return None;
+        }
+        *byte = (hi * 16 + lo) as u8;
+    }
+    Some(fingerprint)
 }
 
 /// The endpoint-scoped explicit plaintext acknowledgement key.

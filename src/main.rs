@@ -563,6 +563,12 @@ impl App {
                 }
                 return Task::none();
             }
+            Message::FormVncFingerprintChanged(value) => {
+                if let Some(form) = self.form.as_mut() {
+                    form.set_vnc_fingerprint(value);
+                }
+                return Task::none();
+            }
             Message::FormDynamicResizeChanged(value) => {
                 if let Some(form) = self.form.as_mut() {
                     form.dynamic_resize = value;

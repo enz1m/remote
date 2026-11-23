@@ -79,3 +79,12 @@ fn a_mixed_resolution_is_treated_as_network_exposure() {
         Some(Exposure::Loopback),
     );
 }
+#[test]
+fn certificate_fingerprint_requires_exact_hex_pairs_and_colon_positions() {
+    assert_eq!(parse_fingerprint(&"4a".repeat(32)), Some([0x4a; 32]));
+    assert_eq!(parse_fingerprint(&["4A"; 32].join(":")), Some([0x4a; 32]));
+    assert_eq!(parse_fingerprint(&["4A"; 32].join("-")), None);
+    assert_eq!(parse_fingerprint(&"4a".repeat(31)), None);
+    assert_eq!(parse_fingerprint(&"4g".repeat(32)), None);
+    assert_eq!(parse_fingerprint(&"é".repeat(32)), None);
+}

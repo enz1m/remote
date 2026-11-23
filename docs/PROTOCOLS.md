@@ -5,7 +5,7 @@ by server; this table describes implemented contracts and remaining limitations.
 
 | Protocol / baseline | Integrated contracts | Remaining integrations / qualification limits |
 |---|---|---|
-| VNC, RFB 3.8 and VeNCrypt 0.2 | Raw, CopyRect, ZRLE persistent zlib/tile palettes/RLE, DesktopSize, LastRect; classic VNC challenge; verified X509None/X509Vnc TLS; pointer/wheel/keys, clipboard typing and bidirectional bounded classic/extended UTF-8 text sharing under capture/session policy | No Tight/JPEG/H.264 encoding, extended desktop layout/multi-monitor, cursor pseudo-encoding, rich/file clipboard or audio extension. These extensions are not required for RFB 3.8 interoperability. No anonymous TLS or certificate bypass. |
+| VNC, RFB 3.8 and VeNCrypt 0.2 | Raw, CopyRect, ZRLE persistent zlib/tile palettes/RLE, DesktopSize, LastRect. Classic VNC challenge and verified X509None/X509Vnc/X509Plain TLS. Pointer, wheel, keys, clipboard typing and bidirectional bounded classic/extended UTF-8 text sharing under capture/session policy. | No Tight/JPEG/H.264 encoding, extended desktop layout/multi-monitor, cursor pseudo-encoding, rich/file clipboard or audio extension. Verified TLS requires a trusted certificate. |
 | RDP, IronRDP session 0.13 / MS-RDPEA / MS-RDPEDISP | TLS, NTLM NLA, 32-bit graphics/reactivation, input and CLIPRDR Unicode text; RDPSND PCM16 mono/stereo 8–192 kHz with advertised-index preservation, legacy split Wave/Wave2/training/confirm; optional DisplayControl with an interactive-session resize-to-viewer toggle | No gateway, Kerberos/KDC, RemoteApp, drive/printer/smartcard/USB redirection, microphone or AVC graphics pipeline. PCM is an interoperable format subset; compressed RDPSND formats are not advertised. Windows hardware/server qualification remains separate. |
 | SPICE, upstream spice-client-glib 0.42+ / spice-protocol | Main/display/input plus upstream SpiceAudio playback/recording; opt-in agent monitor configuration with a live resize-to-viewer toggle; verified TLS for non-loopback; bounded framebuffer publication and guest-agent UTF-8 clipboard | One local SPICE session and primary display; no horizontal wheel events, cursor channel, separate microphone controls, USB, smartcard, WebDAV, GL scanout or migration. Monitor mode activation also requires a functioning guest agent and desktop display-settings service. Audio channels and local device initialization follow upstream SpiceAudio behavior; the Audio setting disables audio channels, with no separate microphone policy. |
 | RustDesk 1.5.1, hbbs/hbbr 1.1.16 | Direct addresses and signed ID discovery, authenticated relay routing, KXv1 directional NaCl, per-host permission updates (interactive sessions close on keyboard revocation); VP8/VP9/H.264/HEVC/AV1 capability checks; Opus playback and bounded plain/zstd UTF-8 clipboard under host permission; keyboard/pointer and immutable view-only | Relay is intentionally selected for ID sessions; no direct UDP hole-punch optimization, multi-display composition, file transfer, address book/account/Pro features, recording or mobile-specific permissions. Custom rendezvous roots must be supplied explicitly. Keep the viewer focused until the copy-completion notice before switching windows; deferred native clipboard offers for late results are not implemented. Internet/default-service availability is not exercised by local QA. |
@@ -33,6 +33,15 @@ SSH profiles are refused with an explanation. TLS keeps the original desktop
 hostname through the tunnel. A failed SSH route never falls back to direct access.
 Optional local, remote and dynamic TCP forwarding rules share the route's lifetime.
 Moonlight requires UDP and therefore needs a VPN rather than ordinary SSH forwarding.
+
+To connect to enzimOS desktop sharing, enable **Require verified TLS (VeNCrypt)**
+in the VNC profile's **Connection options**. Copy the SHA-256 **Certificate
+fingerprint** from the sharing host's trusted display. Enter the host's sharing
+username and password under **Credentials**. Remote stores the password in the
+system keyring. A blank fingerprint uses the system certificate authorities and
+checks the hostname. If the address or port changes, clear the fingerprint or
+confirm the fingerprint on the host and enter it again. Remote sends credentials
+only after verifying the TLS connection.
 
 Primary contracts and releases:
 

@@ -40,7 +40,9 @@ fn required_tls_never_selects_plaintext_even_with_saved_plaintext_consent() {
 
 #[test]
 fn a_complete_handshake_connects_and_sends_the_required_client_messages() {
-    let server = ScriptedServer::start(handshake_steps(640, 400));
+    let mut steps = handshake_steps(640, 400);
+    steps.push(Step::Checkpoint("client setup received"));
+    let server = ScriptedServer::start(steps);
     let profile = server.profile();
 
     let (session, established, events, _stream) =
@@ -53,6 +55,7 @@ fn a_complete_handshake_connects_and_sends_the_required_client_messages() {
     assert_eq!(session.generation(), 7);
     assert_eq!(session.geometry(), (640, 400));
 
+    assert_eq!(server.checkpoint(), Some("client setup received"));
     let observed = server.observed();
     assert_eq!(
         observed.client_version.as_deref(),

@@ -338,6 +338,8 @@ pub struct ConnectionForm {
     pub display_height: String,
     original_display_size: Option<(u32, u32)>,
     pub vnc_tls: bool,
+    pub vnc_fingerprint: String,
+    vnc_fingerprint_endpoint: Option<(String, u16)>,
     /// The secret being typed. Never persisted to SQLite; the reducer routes it
     /// to the keyring.
     pub password: String,
@@ -455,6 +457,8 @@ impl ConnectionForm {
             display_height: String::new(),
             original_display_size: None,
             vnc_tls: false,
+            vnc_fingerprint: String::new(),
+            vnc_fingerprint_endpoint: None,
             password: String::new(),
             password_revealed: false,
             password_dirty: false,
@@ -544,6 +548,12 @@ impl ConnectionForm {
                 .is_some_and(|v| v == "true"),
             audio_enabled: crate::stream_audio::enabled(p),
             vnc_tls: crate::rfb::policy::requires_tls(p),
+            vnc_fingerprint: p
+                .extra
+                .get(crate::rfb::policy::FINGERPRINT_KEY)
+                .cloned()
+                .unwrap_or_default(),
+            vnc_fingerprint_endpoint: Some((p.host.trim().into(), p.port)),
             dynamic_resize: p
                 .extra
                 .get("remote.display.dynamic-resize")
@@ -662,6 +672,34 @@ impl ConnectionForm {
         parse_port(&self.port)
     }
 
+    fn vnc_endpoint(&self) -> Option<(&str, u16)> {
+        self.port_value().map(|port| (self.host.trim(), port))
+    }
+
+    pub fn set_vnc_fingerprint(&mut self, text: String) {
+        self.vnc_fingerprint_endpoint = self.vnc_endpoint().map(|(host, port)| (host.into(), port));
+        self.vnc_fingerprint = text;
+    }
+
+    pub fn vnc_fingerprint_error(&self) -> Option<&'static str> {
+        if self.protocol != Protocol::Vnc || self.vnc_fingerprint.trim().is_empty() {
+            return None;
+        }
+        if !self.vnc_tls {
+            return Some("Clear the fingerprint to turn off verified TLS.");
+        }
+        if crate::rfb::policy::parse_fingerprint(&self.vnc_fingerprint).is_none() {
+            return Some("Enter a SHA-256 fingerprint with 64 hexadecimal digits.");
+        }
+        let approved = self
+            .vnc_fingerprint_endpoint
+            .as_ref()
+            .map(|(host, port)| (host.as_str(), *port));
+        (self.vnc_endpoint() != approved).then_some(
+            "The address changed. Enter the new host’s fingerprint again or clear this field.",
+        )
+    }
+
     /// The port field's visible error, if any.
     pub fn port_error(&self) -> Option<&'static str> {
         self.port_value().is_none().then_some(PORT_ERROR)
@@ -711,6 +749,7 @@ impl ConnectionForm {
             && self.port_value().is_some()
             && self.mac_error().is_none()
             && self.display_size_error().is_none()
+            && self.vnc_fingerprint_error().is_none()
             && self.tunnel_port_error().is_none()
             && self.reconnect_attempts_error().is_none()
             && self.reconnect_ceiling_error().is_none()
@@ -982,6 +1021,18 @@ impl ConnectionForm {
         } else {
             profile.extra.remove(crate::rfb::policy::TLS_KEY);
         }
+        if self.protocol == Protocol::Vnc && self.vnc_tls && !self.vnc_fingerprint.trim().is_empty()
+        {
+            profile.extra.insert(
+                crate::rfb::policy::FINGERPRINT_KEY.into(),
+                self.vnc_fingerprint
+                    .trim()
+                    .replace(':', "")
+                    .to_ascii_lowercase(),
+            );
+        } else {
+            profile.extra.remove(crate::rfb::policy::FINGERPRINT_KEY);
+        }
         if self.dynamic_resize {
             profile
                 .extra
@@ -1070,3 +1121,36 @@ impl ConnectionForm {
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::rfb::policy::{FINGERPRINT_KEY, TLS_KEY};
+
+    #[test]
+    fn changing_a_pinned_vnc_address_requires_reviewing_the_fingerprint() {
+        let mut profile = ConnectionProfile::new("fixture", Protocol::Vnc, "vnc.internal");
+        profile.extra.insert(TLS_KEY.into(), "true".into());
+        profile
+            .extra
+            .insert(FINGERPRINT_KEY.into(), "aa".repeat(32));
+
+        let mut draft = ConnectionForm::for_profile(&profile);
+        assert!(draft.can_save());
+        draft.port = "5901".into();
+        assert!(!draft.apply_to(&mut profile));
+        assert_eq!(profile.port, 5900);
+
+        draft.set_vnc_fingerprint(["BB"; 32].join(":"));
+        assert!(draft.apply_to(&mut profile));
+        assert_eq!(profile.port, 5901);
+        assert_eq!(profile.extra[FINGERPRINT_KEY], "bb".repeat(32));
+
+        draft.host = "other.internal".into();
+        assert!(!draft.can_save());
+        draft.set_vnc_fingerprint(String::new());
+        assert!(draft.apply_to(&mut profile));
+        assert!(!profile.extra.contains_key(FINGERPRINT_KEY));
+        assert!(crate::rfb::policy::requires_tls(&profile));
+    }
+}

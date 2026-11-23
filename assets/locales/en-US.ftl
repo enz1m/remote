@@ -98,3 +98,6 @@ remote-moonlight-pair-again = Pair again with this host
 remote-moonlight-pair-again-hint = Uses the PIN on the next connection. The existing identity is retained until the new pairing succeeds.
 
 remote-native-copy-ready = Remote text copied. Ready to paste.
+remote-vnc-sharing-username = Sharing username
+remote-vnc-fingerprint = Certificate fingerprint
+remote-vnc-fingerprint-hint = Copy the SHA-256 fingerprint shown on the sharing host. Leave blank to use system certificate authorities and check the hostname.

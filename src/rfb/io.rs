@@ -3,7 +3,11 @@ use std::net::TcpStream;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
-use openssl::ssl::{SslConnector, SslMethod, SslStream, SslVersion};
+use openssl::hash::MessageDigest;
+use openssl::ssl::{SslConnector, SslMethod, SslStream, SslVerifyMode, SslVersion};
+use openssl::x509::{X509, store::X509StoreBuilder};
+
+use super::policy::Fingerprint;
 
 pub(super) enum Stream {
     Plain(TcpStream),
@@ -91,19 +95,66 @@ impl Stream {
                 .set_write_timeout(timeout),
         }
     }
-    pub(super) fn enable_tls(&mut self, host: &str, deadline: Instant) -> Result<(), String> {
+    pub(super) fn enable_tls(
+        &mut self,
+        host: &str,
+        fingerprint: Option<Fingerprint>,
+        deadline: Instant,
+    ) -> Result<(), &'static str> {
         let Self::Plain(tcp) = self else {
-            return Err("VNC attempted to negotiate TLS twice".into());
+            return Err("VNC attempted to negotiate TLS twice");
         };
         let mut connector =
             SslConnector::builder(SslMethod::tls_client()).map_err(|_| "VNC TLS is unavailable")?;
         connector
             .set_min_proto_version(Some(SslVersion::TLS1_2))
             .map_err(|_| "VNC requires TLS 1.2 or newer")?;
-        let mut stream = connector.build().connect(host.trim_matches(['[', ']']), DeadlineSocket {
-            tcp: tcp.try_clone().map_err(|_| "VNC could not retain its TLS socket")?,
+        if fingerprint.is_none() {
+            // Bundled OpenSSL's default directory can differ from the system trust store.
+            let mut roots = X509StoreBuilder::new().map_err(|_| "VNC TLS is unavailable")?;
+            for der in rustls_native_certs::load_native_certs().certs {
+                if let Ok(cert) = X509::from_der(der.as_ref()) {
+                    roots
+                        .add_cert(cert)
+                        .map_err(|_| "VNC could not load the system certificate authorities")?;
+                }
+            }
+            connector.set_cert_store(roots.build());
+        }
+        let mut config = connector
+            .build()
+            .configure()
+            .map_err(|_| "VNC TLS is unavailable")?;
+        if fingerprint.is_some() {
+            config.set_verify_hostname(false);
+            config.set_verify(SslVerifyMode::NONE);
+        }
+        let socket = DeadlineSocket {
+            tcp: tcp
+                .try_clone()
+                .map_err(|_| "VNC could not retain its TLS socket")?,
             deadline: Some(deadline),
-        }).map_err(|_| "VNC TLS certificate or handshake could not be verified; use the certificate hostname and a trusted CA")?;
+        };
+        let mut stream = config
+            .connect(host.trim_matches(['[', ']']), socket)
+            .map_err(|_| {
+                if fingerprint.is_some() {
+                    "The TLS handshake did not complete"
+                } else {
+                    "The TLS handshake failed; use the certificate hostname and a trusted CA"
+                }
+            })?;
+        // Only publish the TLS stream after the exact leaf certificate matches the configured pin.
+        if let Some(expected) = fingerprint {
+            let actual = stream
+                .ssl()
+                .peer_certificate()
+                .and_then(|cert| cert.digest(MessageDigest::sha256()).ok())
+                .ok_or("The host did not present a verifiable certificate")?;
+            if actual.as_ref() != expected {
+                return Err("The host certificate does not match the saved SHA-256 fingerprint");
+            }
+        }
         stream.get_mut().deadline = None;
         *self = Self::Tls {
             stream: Arc::new(Mutex::new(stream)),

@@ -110,3 +110,6 @@ remote-days-ago = { $count ->
     [few] قبل { $count } أيام
    *[other] قبل { $count } يومًا
     }
+remote-vnc-sharing-username = اسم مستخدم المشاركة
+remote-vnc-fingerprint = بصمة الشهادة
+remote-vnc-fingerprint-hint = انسخ بصمة SHA-256 المعروضة على الجهاز الذي يشارك سطح المكتب. اترك الحقل فارغًا لاستخدام جهات التصديق في النظام والتحقق من اسم المضيف.

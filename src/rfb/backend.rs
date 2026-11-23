@@ -413,6 +413,7 @@ pub(super) fn open_on_with_password(
     dial: &DialHandle,
     password: Option<&str>,
 ) -> Result<(RfbSession, Handshake, Vec<SessionEvent>, SessionStream), RfbFailure> {
+    let tls = handshake::VerifiedTls::for_profile(profile)?;
     let route =
         crate::tunnel::Route::prepare(profile, dial.cancel_flag()).map_err(|e| RfbFailure::Io {
             phase: "opening SSH tunnel",
@@ -447,7 +448,7 @@ pub(super) fn open_on_with_password(
         destination,
         dial.cancel_flag(),
         password,
-        super::policy::requires_tls(profile).then_some(profile.host.as_str()),
+        tls,
     );
     dial.release();
     let established = established?;
