@@ -66,7 +66,7 @@ cargo run --locked
 
 Use `cargo build --release --locked` for an optimized binary.
 
-The app pins public [enzUI Alpha 0.2](https://github.com/enz1m/enzui/releases/tag/v0.2.0-alpha.1)
+The app pins public [enzUI source](https://github.com/enz1m/enzui)
 and its matching public foundation forks. No sibling framework checkout or manual
 submodule setup is required. Wayland is the default; add `--features x11` for X11.
 Optional `--features center` enables the enrolled enzUI Center connector.
