@@ -127,7 +127,7 @@ impl App {
     ///
     /// The generation is checked so a wrapped value cannot match an abandoned dial;
     /// exhaustion withdraws the profile's reconnect policy.
-    pub(crate) fn begin_connect(&mut self, pid: Uuid, edge: &SessionEvent) -> Task<Message> {
+    pub(crate) fn begin_connect(&mut self, pid: Uuid, mut edge: &SessionEvent) -> Task<Message> {
         let Some(profile) = self
             .profiles
             .iter()
@@ -145,19 +145,23 @@ impl App {
                 || session.profile_snapshot.view_only != profile.view_only
             {
                 *session = Session::new(profile);
+                edge = &SessionEvent::Connect;
             } else {
                 session.profile_snapshot = profile;
             }
         } else {
             self.sessions.push(Session::new(profile));
+            edge = &SessionEvent::Connect;
         }
-        if let Some(session) = self.sessions.iter_mut().find(|s| s.profile_id == pid)
-            && let Ok((next, msg)) = transition(session.status, edge)
-        {
-            session.status = next;
-            if let Some(m) = msg {
-                session.last_message = m;
-            }
+        let Some(session) = self.sessions.iter_mut().find(|s| s.profile_id == pid) else {
+            return Task::none();
+        };
+        let Ok((next, msg)) = transition(session.status, edge) else {
+            return Task::none();
+        };
+        session.status = next;
+        if let Some(m) = msg {
+            session.last_message = m;
         }
 
         let Some(generation) = self.connect_generation.checked_add(1) else {
