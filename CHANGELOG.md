@@ -2,9 +2,8 @@
 
 ## 0.1.2
 
-- Support verified VeNCrypt sharing credentials.
-- Allow reconnecting after editing a failed connection profile.
-- Update enzUI and its paired iced fork for nonblocking Wayland presentation discovery.
+- VNC connections can use verified VeNCrypt sharing credentials.
+- After a failed connection, edit the saved profile and reconnect from the same session.
 
 ## 0.1.0 — initial source preview
 
