@@ -21,6 +21,9 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.1.3" date="2026-11-28">
+      <description><p>Update the desktop UI framework for more reliable redraws and improved font fallback.</p></description>
+    </release>
     <release version="0.1.2" date="2026-11-23">
       <description>
         <p>VNC connections can use verified VeNCrypt sharing credentials.</p>
